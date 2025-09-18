@@ -13,3 +13,82 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum Role { 
+  STUDENT 
+  TEACHER 
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  role      Role     @default(STUDENT)
+
+  groupId   String   // jeder User genau eine Gruppe
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
+  attempts  QuizAttempt[]
+  createdAt DateTime @default(now())
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  users     User[]
+  createdAt DateTime @default(now())
+}
+
+model Module {
+  id    String @id @default(cuid())
+  name  String @unique
+  quiz  Quiz?
+}
+
+model Quiz {
+  id          String   @id @default(cuid())
+  title       String
+  moduleId    String   @unique   // ein Quiz pro Vorlesung/Modul
+  createdById String
+  createdAt   DateTime @default(now())
+  maxPoints   Int
+
+  module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  // createdBy   User     @relation("CreatedQuizzes", fields: [createdById], references: [id])
+
+  questions   Question[]
+  attempts    QuizAttempt[]
+}
+
+model Question {
+  id        String   @id @default(cuid())
+  quizId    String
+  text      String
+  order     Int
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  options   AnswerOption[]
+}
+
+model AnswerOption {
+  id         String   @id @default(cuid())
+  questionId String
+  text       String
+  isCorrect  Boolean
+  order      Int
+  question   Question @relation(fields: [questionId], references: [id])
+}
+
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  quizId    String
+  userId    String
+  score     Int
+  createdAt DateTime @default(now())
+
+  quiz      Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([quizId, userId]) // genau ein Versuch pro Quiz pro User
+}
